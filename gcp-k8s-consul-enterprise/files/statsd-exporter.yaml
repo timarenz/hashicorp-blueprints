@@ -1,0 +1,46 @@
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: statsd-exporter
+  namespace: metrics
+  labels:
+    app: statsd-exporter
+spec:
+  selector:
+    matchLabels:
+      app: statsd-exporter
+  template:
+    metadata:
+      labels:
+        app: statsd-exporter
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "9102"
+    spec:
+      containers:
+      - name: statsd-exporter
+        image: prom/statsd-exporter:v0.18.0
+        ports:
+        - name: statsd
+          containerPort: 9125
+        - name: web
+          containerPort: 9102
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: statsd-exporter
+  namespace: metrics
+spec:
+  selector:
+    app: statsd-exporter
+  ports:
+    - name: statsd-tcp
+      protocol: TCP
+      port: 9125
+    - name: statsd-udp
+      protocol: UDP
+      port: 9125
+    - name: web
+      protocol: TCP
+      port: 9102

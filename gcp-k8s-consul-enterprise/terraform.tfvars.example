@@ -1,0 +1,5 @@
+gcp_project          = "my-project"
+gcp_region           = "europe-west4"
+environment_name     = "k8s-consul-enterprise"
+owner_name           = "tar"
+consul_license  = "HEHCE...CEDEG343"

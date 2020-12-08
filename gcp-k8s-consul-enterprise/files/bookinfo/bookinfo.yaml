@@ -1,0 +1,427 @@
+# Copyright Istio Authors
+#
+#   Licensed under the Apache License, Version 2.0 (the "License");
+#   you may not use this file except in compliance with the License.
+#   You may obtain a copy of the License at
+#
+#       http://www.apache.org/licenses/LICENSE-2.0
+#
+#   Unless required by applicable law or agreed to in writing, software
+#   distributed under the License is distributed on an "AS IS" BASIS,
+#   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+#   See the License for the specific language governing permissions and
+#   limitations under the License.
+
+##################################################################################################
+# This file defines the services, service accounts, and deployments for the Bookinfo sample.
+#
+# To apply all 4 Bookinfo services, their corresponding service accounts, and deployments:
+#
+#   kubectl apply -f samples/bookinfo/platform/kube/bookinfo.yaml
+#
+# Alternatively, you can deploy any resource separately:
+#
+#   kubectl apply -f samples/bookinfo/platform/kube/bookinfo.yaml -l service=reviews # reviews Service
+#   kubectl apply -f samples/bookinfo/platform/kube/bookinfo.yaml -l account=reviews # reviews ServiceAccount
+#   kubectl apply -f samples/bookinfo/platform/kube/bookinfo.yaml -l app=reviews,version=v3 # reviews-v3 Deployment
+##################################################################################################
+
+##################################################################################################
+# Details service
+##################################################################################################
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: details
+  labels:
+    account: details
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: details-v1
+  labels:
+    app: details
+    version: v1
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: details
+      version: v1
+  template:
+    metadata:
+      labels:
+        app: details
+        version: v1
+      annotations:
+        "prometheus.io/scrape": "true"
+        "prometheus.io/port": "9102"
+        "consul.hashicorp.com/connect-inject": "true"
+        "consul.hashicorp.com/service-meta-version": "v1"
+    spec:
+      serviceAccountName: details
+      containers:
+      - name: details
+        image: docker.io/istio/examples-bookinfo-details-v1:1.16.2
+        imagePullPolicy: IfNotPresent
+        ports:
+        - containerPort: 9080
+---
+##################################################################################################
+# Ratings service
+##################################################################################################
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: ratings
+  labels:
+    account: ratings
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ratings-v1
+  labels:
+    app: ratings
+    version: v1
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: ratings
+      version: v1
+  template:
+    metadata:
+      labels:
+        app: ratings
+        version: v1
+      annotations:
+        "prometheus.io/scrape": "true"
+        "prometheus.io/port": "9102"
+        "consul.hashicorp.com/connect-inject": "true"
+        "consul.hashicorp.com/service-meta-version": "v1"
+    spec:
+      serviceAccountName: ratings
+      containers:
+      - name: ratings
+        image: docker.io/istio/examples-bookinfo-ratings-v1:1.16.2
+        imagePullPolicy: IfNotPresent
+        ports:
+        - containerPort: 9080
+---
+##################################################################################################
+# Reviews service
+##################################################################################################
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: reviews
+  labels:
+    account: reviews
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: reviews-v1
+  labels:
+    app: reviews
+    version: v1
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: reviews
+      version: v1
+  template:
+    metadata:
+      labels:
+        app: reviews
+        version: v1
+      annotations:
+        "prometheus.io/scrape": "true"
+        "prometheus.io/port": "9102"
+        "consul.hashicorp.com/connect-inject": "true"
+        "consul.hashicorp.com/service-meta-version": "v1"
+    spec:
+      serviceAccountName: reviews
+      containers:
+      - name: reviews
+        image: docker.io/istio/examples-bookinfo-reviews-v1:1.16.2
+        imagePullPolicy: IfNotPresent
+        env:
+        - name: LOG_DIR
+          value: "/tmp/logs"
+        ports:
+        - containerPort: 9090
+        volumeMounts:
+        - name: tmp
+          mountPath: /tmp
+        - name: wlp-output
+          mountPath: /opt/ibm/wlp/output
+        - name: conf
+          mountPath: /opt/ibm/wlp/usr/servers/defaultServer/server.xml
+          subPath: server.xml
+      volumes:
+      - name: wlp-output
+        emptyDir: {}
+      - name: tmp
+        emptyDir: {}
+      - name: conf
+        configMap:
+          name: reviews
+          items:
+          - key: server.xml
+            path: server.xml
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: reviews-v2
+  labels:
+    app: reviews
+    version: v2
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: reviews
+      version: v2
+  template:
+    metadata:
+      labels:
+        app: reviews
+        version: v2
+      annotations:
+        "prometheus.io/scrape": "true"
+        "prometheus.io/port": "9102"
+        "consul.hashicorp.com/connect-inject": "true"
+        "consul.hashicorp.com/service-meta-version": "v2"
+        "consul.hashicorp.com/connect-service-upstreams": "ratings:9080"
+    spec:
+      serviceAccountName: reviews
+      containers:
+      - name: reviews
+        image: docker.io/istio/examples-bookinfo-reviews-v2:1.16.2
+        imagePullPolicy: IfNotPresent
+        env:
+        - name: LOG_DIR
+          value: "/tmp/logs"
+        - name: RATINGS_HOSTNAME
+          value: "127.0.0.1"
+        ports:
+        - containerPort: 9090
+        volumeMounts:
+        - name: tmp
+          mountPath: /tmp
+        - name: wlp-output
+          mountPath: /opt/ibm/wlp/output
+        - name: conf
+          mountPath: /opt/ibm/wlp/usr/servers/defaultServer/server.xml
+          subPath: server.xml
+      volumes:
+      - name: wlp-output
+        emptyDir: {}
+      - name: tmp
+        emptyDir: {}
+      - name: conf
+        configMap:
+          name: reviews
+          items:
+          - key: server.xml
+            path: server.xml
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: reviews-v3
+  labels:
+    app: reviews
+    version: v3
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: reviews
+      version: v3
+  template:
+    metadata:
+      labels:
+        app: reviews
+        version: v3
+      annotations:
+        "prometheus.io/scrape": "true"
+        "prometheus.io/port": "9102"
+        "consul.hashicorp.com/connect-inject": "true"
+        "consul.hashicorp.com/service-meta-version": "v3"
+        "consul.hashicorp.com/connect-service-upstreams": "ratings:9080"
+    spec:
+      serviceAccountName: reviews
+      containers:
+      - name: reviews
+        image: docker.io/istio/examples-bookinfo-reviews-v3:1.16.2
+        imagePullPolicy: IfNotPresent
+        env:
+        - name: LOG_DIR
+          value: "/tmp/logs"
+        - name: RATINGS_HOSTNAME
+          value: "127.0.0.1"
+        ports:
+        - containerPort: 9090
+        volumeMounts:
+        - name: tmp
+          mountPath: /tmp
+        - name: wlp-output
+          mountPath: /opt/ibm/wlp/output
+        - name: conf
+          mountPath: /opt/ibm/wlp/usr/servers/defaultServer/server.xml
+          subPath: server.xml
+      volumes:
+      - name: wlp-output
+        emptyDir: {}
+      - name: tmp
+        emptyDir: {}
+      - name: conf
+        configMap:
+         name: reviews
+         items:
+          - key: server.xml
+            path: server.xml
+---
+##################################################################################################
+# Productpage services
+##################################################################################################
+---
+apiVersion: consul.hashicorp.com/v1alpha1
+kind: ServiceDefaults
+metadata:
+  name: productpage-virtualservice
+spec:
+  protocol: http
+---
+apiVersion: consul.hashicorp.com/v1alpha1
+kind: ServiceRouter
+metadata:
+  name: productpage-virtualservice
+spec:
+  routes:
+    - match:
+        http:
+          pathPrefix: /reviews
+      destination:
+        service: reviews
+    - match:
+        http:
+          pathPrefix: /details
+      destination:
+        service: details
+--- 
+# apiVersion: v1
+# kind: Service
+# metadata:
+#   name: productpage
+#   labels:
+#     app: productpage
+#     service: productpage
+# spec:
+#   ports:
+#   - port: 80
+#     name: http
+#     targetPort: 9090
+#   selector:
+#     app: productpage
+#   type: LoadBalancer
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: productpage
+  labels:
+    account: productpage
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: productpage-v1
+  labels:
+    app: productpage
+    version: v1
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: productpage
+      version: v1
+  template:
+    metadata:
+      labels:
+        app: productpage
+        version: v1
+      annotations:
+        "prometheus.io/scrape": "true"
+        "prometheus.io/port": "9102"
+        "consul.hashicorp.com/connect-inject": "true"
+        "consul.hashicorp.com/service-meta-version": "v1"
+        "consul.hashicorp.com/connect-service-upstreams": "productpage-virtualservice:9080"
+    spec:
+      serviceAccountName: productpage
+      containers:
+      - name: productpage
+        image: docker.io/istio/examples-bookinfo-productpage-v1:1.16.2
+        command: ["python", "productpage.py", "9090"]
+        imagePullPolicy: IfNotPresent
+        env:
+        - name: REVIEWS_HOSTNAME
+          value: "127.0.0.1"
+        - name: RATINGS_HOSTNAME
+          value: "127.0.0.1"
+        - name: DETAILS_HOSTNAME
+          value: "127.0.0.1"
+        ports:
+        - containerPort: 9090
+        volumeMounts:
+        - name: tmp
+          mountPath: /tmp
+      volumes:
+      - name: tmp
+        emptyDir: {}
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: reviews
+data:
+  server.xml: |
+              <!-- Copyright (c) 2017 Istio Authors
+
+                Licensed under the Apache License, Version 2.0 (the "License");
+                you may not use this file except in compliance with the License.
+                You may obtain a copy of the License at
+              
+                  http://www.apache.org/licenses/LICENSE-2.0
+              
+                Unless required by applicable law or agreed to in writing, software
+                distributed under the License is distributed on an "AS IS" BASIS,
+                WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+                See the License for the specific language governing permissions and
+                limitations under the License.-->
+              <server description="Sample Liberty server">
+              
+                  <featureManager>
+                      <feature>jaxrs-2.0</feature>
+                      <feature>jsonp-1.0</feature>
+                  </featureManager>
+              
+                  <httpEndpoint host="*" httpPort="9090" httpsPort="-1"
+                                id="defaultHttpEndpoint"/>
+              
+                  <webContainer deferServletLoad="false"/>
+                  <applicationMonitor dropinsEnabled="false" updateTrigger="mbean"/>
+                  <config updateTrigger="mbean"/>
+              
+              
+                  <executor coreThreads="5"/>
+              
+                  <webApplication contextRoot="/" id="reviews-app" location="reviews-application-1.0.war" name="reviews-app"/>
+              
+              </server>

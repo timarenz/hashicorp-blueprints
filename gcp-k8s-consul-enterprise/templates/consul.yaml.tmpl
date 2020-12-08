@@ -1,0 +1,71 @@
+global:
+  name: consul
+  image: hashicorp/consul-enterprise:${consul_version}-ent
+  imageK8S: hashicorp/consul-k8s:${consul_k8s_version}
+  datacenter: ${consul_datacenter_name}
+  gossipEncryption:
+    secretName: consul
+    secretKey: gossipEncryptionKey
+  tls:
+    enabled: true
+    enableAutoEncrypt: true
+    httpsOnly: false
+  enableConsulNamespaces: true
+  acls:
+    manageSystemACLs: true
+    createReplicationToken: true
+  federation:
+    enabled: true
+    createFederationSecret: true
+  imageEnvoy: envoyproxy/envoy-alpine:${envoy_version}
+server:
+  enterpriseLicense:
+    secretName: consul
+    secretKey: license
+  extraConfig: |
+    {
+      "ui_config": {
+        "enabled": true,
+        "metrics_provider": "prometheus",
+        "metrics_proxy": {
+          "base_url": "http://prometheus-server.metrics.svc.cluster.local"
+        }
+      },
+      "telemetry": {
+        "statsd_address": "statsd-exporter.metrics.svc.cluster.local:9125"
+      }
+    }
+dns:
+  enabled: true
+ui:
+  enabled: true
+  service:
+    type: LoadBalancer
+syncCatalog:
+  enabled: true
+  default: false
+  consulNamespaces:
+    mirroringK8S: true
+  addK8SNamespaceSuffix: false
+connectInject:
+  enabled: true
+  consulNamespaces:
+    mirroringK8S: true
+  centralConfig:
+    defaultProtocol: http
+    proxyDefaults: |
+      {
+        "protocol": "http",
+        "envoy_prometheus_bind_addr": "0.0.0.0:9102"
+      }
+controller:
+  enabled: true
+meshGateway:
+  enabled: true
+ingressGateways:
+  enabled: true
+  defaults:
+    service:
+      type: LoadBalancer
+terminatingGateways:
+  enabled: true
